@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[40,)"
+license="All rights reserved"
+
+[[mods]]
+modId="createwalkabletracks"
+version="${file.jarVersion}"
+displayName="Create Walkable Tracks"
+authors="Masuary"
+description='''
+Adds collision to curved and diagonal Create train tracks so players can walk on them. Trains still pass through unaffected.
+'''
+
+[[dependencies.createwalkabletracks]]
+    modId="forge"
+    mandatory=true
+    versionRange="[40,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.createwalkabletracks]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.18.2,1.19)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.createwalkabletracks]]
+    modId="create"
+    mandatory=true
+    versionRange="[0.5.1,)"
+    ordering="AFTER"
+    side="BOTH"
