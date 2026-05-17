@@ -1,7 +1,11 @@
 package com.masuary.createwalkabletracks;
 
+import net.minecraft.core.BlockPos;
+
 public interface IFakeTrackPad {
-    void cwt$setPadRange(float padMinY, float padMaxY);
+    boolean cwt$setOwnerPadRange(BlockPos owner, float padMinY, float padMaxY);
+
+    boolean cwt$removeOwner(BlockPos owner);
 
     float cwt$getPadMinY();
 

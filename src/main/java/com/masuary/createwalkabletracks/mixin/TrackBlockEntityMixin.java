@@ -3,7 +3,6 @@ package com.masuary.createwalkabletracks.mixin;
 import com.masuary.createwalkabletracks.IFakeTrackPad;
 import com.simibubi.create.content.trains.track.BezierConnection;
 import com.simibubi.create.content.trains.track.FakeTrackBlock;
-import com.simibubi.create.content.trains.track.FakeTrackBlockEntity;
 import com.simibubi.create.content.trains.track.TrackBlockEntity;
 import com.simibubi.create.foundation.block.ProperWaterloggedBlock;
 import com.simibubi.create.foundation.blockEntity.SyncedBlockEntity;
@@ -60,29 +59,31 @@ public abstract class TrackBlockEntityMixin {
             float t = (float) i / (float) sampleCount;
             Vec3 result = VecHelper.bezier(end1, end2, finish1, finish2, t);
             Vec3 derivative = VecHelper.bezierDerivative(end1, end2, finish1, finish2, t);
-            Vec3 faceNormal = faceNormal1.equals(faceNormal2) ? faceNormal1 : VecHelper.slerp(t, faceNormal1, faceNormal2);
-            Vec3 below = result.add(faceNormal.scale(-0.25));
-
-            double tangentX = derivative.x;
-            double tangentZ = derivative.z;
-            double tangentLen = Math.sqrt(tangentX * tangentX + tangentZ * tangentZ);
-            if (tangentLen < 1.0e-6) {
+            if (derivative.lengthSqr() < 1.0e-12) {
                 continue;
             }
-            double perpX = -tangentZ / tangentLen;
-            double perpZ = tangentX / tangentLen;
+            derivative = derivative.normalize();
+            Vec3 faceNormal = faceNormal1.equals(faceNormal2) ? faceNormal1 : VecHelper.slerp(t, faceNormal1, faceNormal2);
+            Vec3 lateralAxis = faceNormal.cross(derivative);
+            if (lateralAxis.lengthSqr() < 1.0e-9) {
+                continue;
+            }
+            lateralAxis = lateralAxis.normalize();
+            Vec3 below = result.add(faceNormal.scale(-0.25));
 
             for (double offset : CWT$LATERAL_OFFSETS) {
-                double lateralX = result.x + perpX * offset;
-                double lateralZ = result.z + perpZ * offset;
+                double lateralX = result.x + lateralAxis.x * offset;
+                double lateralY = result.y + lateralAxis.y * offset;
+                double lateralZ = result.z + lateralAxis.z * offset;
+                double lateralBelowY = below.y + lateralAxis.y * offset;
                 int blockX = Mth.floor(lateralX);
                 int blockZ = Mth.floor(lateralZ);
                 long key = cwt$packKey(blockX, blockZ);
 
                 double[] data = bins.computeIfAbsent(key, k -> new double[]{Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE});
-                if (result.y < data[0]) data[0] = result.y;
-                if (result.y > data[1]) data[1] = result.y;
-                if (below.y < data[2]) data[2] = below.y;
+                if (lateralY < data[0]) data[0] = lateralY;
+                if (lateralY > data[1]) data[1] = lateralY;
+                if (lateralBelowY < data[2]) data[2] = lateralBelowY;
             }
         }
 
@@ -95,10 +96,7 @@ public abstract class TrackBlockEntityMixin {
             BlockPos worldPos = new BlockPos(blockX, fakeTrackTeY, blockZ).offset(tePosition);
 
             if (remove) {
-                BlockState existing = level.getBlockState(worldPos);
-                if (existing.getBlock() instanceof FakeTrackBlock) {
-                    level.removeBlock(worldPos, false);
-                }
+                cwt$handleRemoval(level, worldPos, tePosition);
                 continue;
             }
 
@@ -126,12 +124,11 @@ public abstract class TrackBlockEntityMixin {
             float padMaxY = (float) (data[1] - fakeTrackTeY + CWT$PAD_HALF_THICKNESS);
 
             BlockEntity be = level.getBlockEntity(worldPos);
-            if (!(be instanceof FakeTrackBlockEntity) || !(be instanceof IFakeTrackPad pad)) {
+            if (!(be instanceof IFakeTrackPad pad)) {
                 continue;
             }
 
-            if (!pad.cwt$isPadSet() || pad.cwt$getPadMinY() != padMinY || pad.cwt$getPadMaxY() != padMaxY) {
-                pad.cwt$setPadRange(padMinY, padMaxY);
+            if (pad.cwt$setOwnerPadRange(tePosition, padMinY, padMaxY)) {
                 be.setChanged();
                 if (be instanceof SyncedBlockEntity syncedBe) {
                     syncedBe.sendData();
@@ -140,14 +137,39 @@ public abstract class TrackBlockEntityMixin {
         }
     }
 
+    private static void cwt$handleRemoval(Level level, BlockPos worldPos, BlockPos ownerPos) {
+        BlockState existing = level.getBlockState(worldPos);
+        if (!(existing.getBlock() instanceof FakeTrackBlock)) {
+            return;
+        }
+        BlockEntity be = level.getBlockEntity(worldPos);
+        if (!(be instanceof IFakeTrackPad pad)) {
+            return;
+        }
+        boolean noOwnersLeft = pad.cwt$removeOwner(ownerPos);
+        if (noOwnersLeft) {
+            level.removeBlock(worldPos, false);
+            return;
+        }
+        be.setChanged();
+        if (be instanceof SyncedBlockEntity syncedBe) {
+            syncedBe.sendData();
+        }
+    }
+
     private static Block cwt$cachedFakeTrackBlock;
+
+    private static final ResourceLocation CWT$FAKE_TRACK_ID = ResourceLocation.tryParse("create:fake_track");
 
     private static Block cwt$resolveFakeTrackBlock() {
         Block cached = cwt$cachedFakeTrackBlock;
         if (cached != null) {
             return cached;
         }
-        Block resolved = ForgeRegistries.BLOCKS.getValue(new ResourceLocation("create:fake_track"));
+        if (CWT$FAKE_TRACK_ID == null) {
+            return null;
+        }
+        Block resolved = ForgeRegistries.BLOCKS.getValue(CWT$FAKE_TRACK_ID);
         if (resolved instanceof FakeTrackBlock) {
             cwt$cachedFakeTrackBlock = resolved;
             return resolved;

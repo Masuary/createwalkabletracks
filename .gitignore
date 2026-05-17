@@ -21,6 +21,9 @@ run/
 # Third-party JARs (Create is licensed; users must supply their own copy)
 deps/
 
+# Playwright MCP runtime data
+.playwright-mcp/
+
 # OS / misc
 *.log
 .DS_Store

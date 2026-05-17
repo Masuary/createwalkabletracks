@@ -1,5 +1,6 @@
 package com.masuary.createwalkabletracks.client;
 
+import com.masuary.createwalkabletracks.ClientConfig;
 import com.masuary.createwalkabletracks.CreateWalkableTracks;
 import com.masuary.createwalkabletracks.IFakeTrackPad;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -7,7 +8,6 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Matrix3f;
 import com.mojang.math.Matrix4f;
 import com.simibubi.create.content.trains.track.BezierConnection;
-import com.simibubi.create.content.trains.track.FakeTrackBlockEntity;
 import com.simibubi.create.content.trains.track.TrackBlockEntity;
 import com.simibubi.create.foundation.utility.VecHelper;
 import net.minecraft.client.KeyMapping;
@@ -33,9 +33,6 @@ import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = CreateWalkableTracks.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class TrackVisualizer {
-
-    private static final int RENDER_RANGE_BLOCKS = 64;
-    private static final int BEZIER_SAMPLE_COUNT = 64;
 
     private static boolean enabled = false;
     private static KeyMapping toggleKey;
@@ -77,6 +74,9 @@ public final class TrackVisualizer {
             return;
         }
 
+        int renderRangeBlocks = ClientConfig.VISUALIZER_RANGE_BLOCKS.get();
+        int bezierSampleCount = ClientConfig.VISUALIZER_BEZIER_SAMPLE_COUNT.get();
+
         PoseStack poseStack = event.getPoseStack();
         Vec3 cameraPos = minecraft.gameRenderer.getMainCamera().getPosition();
         MultiBufferSource.BufferSource bufferSource = minecraft.renderBuffers().bufferSource();
@@ -88,7 +88,7 @@ public final class TrackVisualizer {
         BlockPos playerPos = player.blockPosition();
         int playerChunkX = playerPos.getX() >> 4;
         int playerChunkZ = playerPos.getZ() >> 4;
-        int chunkRange = (RENDER_RANGE_BLOCKS >> 4) + 1;
+        int chunkRange = (renderRangeBlocks >> 4) + 1;
 
         for (int dx = -chunkRange; dx <= chunkRange; dx++) {
             for (int dz = -chunkRange; dz <= chunkRange; dz++) {
@@ -98,7 +98,7 @@ public final class TrackVisualizer {
                     continue;
                 }
                 LevelChunk chunk = level.getChunk(chunkX, chunkZ);
-                renderChunkBlockEntities(poseStack, lineConsumer, chunk, playerPos);
+                renderChunkBlockEntities(poseStack, lineConsumer, chunk, playerPos, renderRangeBlocks, bezierSampleCount);
             }
         }
 
@@ -106,18 +106,19 @@ public final class TrackVisualizer {
         bufferSource.endBatch(RenderType.lines());
     }
 
-    private static void renderChunkBlockEntities(PoseStack poseStack, VertexConsumer lineConsumer, LevelChunk chunk, BlockPos playerPos) {
+    private static void renderChunkBlockEntities(PoseStack poseStack, VertexConsumer lineConsumer, LevelChunk chunk, BlockPos playerPos, int renderRangeBlocks, int bezierSampleCount) {
+        double rangeSquared = (double) renderRangeBlocks * (double) renderRangeBlocks;
         for (Map.Entry<BlockPos, BlockEntity> entry : chunk.getBlockEntities().entrySet()) {
             BlockEntity blockEntity = entry.getValue();
             BlockPos pos = entry.getKey();
-            if (pos.distSqr(playerPos) > (double) (RENDER_RANGE_BLOCKS * RENDER_RANGE_BLOCKS)) {
+            if (pos.distSqr(playerPos) > rangeSquared) {
                 continue;
             }
 
-            if (blockEntity instanceof FakeTrackBlockEntity && blockEntity instanceof IFakeTrackPad pad) {
+            if (blockEntity instanceof IFakeTrackPad pad) {
                 renderPadOutline(poseStack, lineConsumer, pos, pad);
             } else if (blockEntity instanceof TrackBlockEntity trackBlockEntity) {
-                renderBezierCurves(poseStack, lineConsumer, trackBlockEntity);
+                renderBezierCurves(poseStack, lineConsumer, trackBlockEntity, bezierSampleCount);
             }
         }
     }
@@ -136,7 +137,7 @@ public final class TrackVisualizer {
         LevelRenderer.renderLineBox(poseStack, lineConsumer, box, red, green, blue, 1.0f);
     }
 
-    private static void renderBezierCurves(PoseStack poseStack, VertexConsumer lineConsumer, TrackBlockEntity trackBlockEntity) {
+    private static void renderBezierCurves(PoseStack poseStack, VertexConsumer lineConsumer, TrackBlockEntity trackBlockEntity, int bezierSampleCount) {
         Map<BlockPos, BezierConnection> connections = trackBlockEntity.getConnections();
         if (connections.isEmpty()) {
             return;
@@ -147,11 +148,11 @@ public final class TrackVisualizer {
             if (!bezier.isPrimary()) {
                 continue;
             }
-            renderSingleBezier(lineConsumer, pose, normal, bezier);
+            renderSingleBezier(lineConsumer, pose, normal, bezier, bezierSampleCount);
         }
     }
 
-    private static void renderSingleBezier(VertexConsumer lineConsumer, Matrix4f pose, Matrix3f normal, BezierConnection bezier) {
+    private static void renderSingleBezier(VertexConsumer lineConsumer, Matrix4f pose, Matrix3f normal, BezierConnection bezier, int bezierSampleCount) {
         Vec3 end1 = bezier.starts.getFirst().add(0.0, 0.1875, 0.0);
         Vec3 end2 = bezier.starts.getSecond().add(0.0, 0.1875, 0.0);
         double handleLength = bezier.getHandleLength();
@@ -159,8 +160,8 @@ public final class TrackVisualizer {
         Vec3 finish2 = bezier.axes.getSecond().scale(handleLength).add(end2);
 
         Vec3 previous = VecHelper.bezier(end1, end2, finish1, finish2, 0.0f);
-        for (int i = 1; i <= BEZIER_SAMPLE_COUNT; i++) {
-            float t = (float) i / (float) BEZIER_SAMPLE_COUNT;
+        for (int i = 1; i <= bezierSampleCount; i++) {
+            float t = (float) i / (float) bezierSampleCount;
             Vec3 current = VecHelper.bezier(end1, end2, finish1, finish2, t);
             lineConsumer.vertex(pose, (float) previous.x, (float) previous.y, (float) previous.z)
                     .color(0.3f, 0.6f, 1.0f, 1.0f)
