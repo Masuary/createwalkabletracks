@@ -7,6 +7,7 @@ modId="createwalkabletracks"
 version="${file.jarVersion}"
 displayName="Create Walkable Tracks"
 authors="Masuary"
+logoFile="logo.png"
 description='''
 Adds collision to curved and diagonal Create train tracks so players can walk on them. Trains still pass through unaffected.
 '''

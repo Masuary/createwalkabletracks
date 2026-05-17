@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Create Walkable Tracks - Text Logo</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  body {
+    width: 512px;
+    height: 512px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .wrap {
+    position: relative;
+    width: 512px;
+    height: 512px;
+  }
+  .bg {
+    position: absolute; inset: 0;
+  }
+  .text {
+    position: absolute; inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Press Start 2P', monospace;
+    color: #f5ecd3;
+    text-align: center;
+    z-index: 2;
+  }
+  .line-create {
+    font-size: 42px;
+    letter-spacing: 3px;
+    margin-bottom: 32px;
+    color: #a8d6f0;
+    text-shadow:
+      3px 3px 0 #0a1e2e,
+      0 0 14px rgba(120, 200, 240, 0.45);
+  }
+  .line-walkable {
+    font-size: 56px;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    text-shadow:
+      5px 5px 0 #0a1e2e,
+      0 0 22px rgba(120, 200, 240, 0.5);
+  }
+  .line-tracks {
+    font-size: 56px;
+    letter-spacing: 3px;
+    text-shadow:
+      5px 5px 0 #0a1e2e,
+      0 0 22px rgba(120, 200, 240, 0.5);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Background circle -->
+  <svg class="bg" width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="bgGrad" cx="50%" cy="42%" r="65%">
+        <stop offset="0%" stop-color="#3a85b8"/>
+        <stop offset="60%" stop-color="#1f5680"/>
+        <stop offset="100%" stop-color="#0d2c44"/>
+      </radialGradient>
+      <clipPath id="cClip"><circle cx="256" cy="256" r="240"/></clipPath>
+    </defs>
+    <!-- White ring -->
+    <circle cx="256" cy="256" r="248" fill="#ffffff"/>
+    <!-- Blue gradient bg -->
+    <circle cx="256" cy="256" r="240" fill="url(#bgGrad)"/>
+    <!-- Subtle grid -->
+    <g clip-path="url(#cClip)" opacity="0.10">
+      <line x1="0" y1="128" x2="512" y2="128" stroke="#ffffff" stroke-width="2"/>
+      <line x1="0" y1="256" x2="512" y2="256" stroke="#ffffff" stroke-width="2"/>
+      <line x1="0" y1="384" x2="512" y2="384" stroke="#ffffff" stroke-width="2"/>
+      <line x1="128" y1="0" x2="128" y2="512" stroke="#ffffff" stroke-width="2"/>
+      <line x1="256" y1="0" x2="256" y2="512" stroke="#ffffff" stroke-width="2"/>
+      <line x1="384" y1="0" x2="384" y2="512" stroke="#ffffff" stroke-width="2"/>
+    </g>
+    <!-- Outer edge stroke -->
+    <circle cx="256" cy="256" r="240" fill="none" stroke="#0a1e2e" stroke-width="3" opacity="0.45"/>
+  </svg>
+
+  <div class="text">
+    <div class="line-create">CREATE:</div>
+    <div class="line-walkable">WALKABLE</div>
+    <div class="line-tracks">TRACKS</div>
+  </div>
+</div>
+</body>
+</html>
